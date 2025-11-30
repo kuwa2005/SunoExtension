@@ -274,14 +274,15 @@
             let imageUrl = '';
 
             // リンク要素を探す（href属性にUUIDが含まれるもの）
-            // HTML構造から、`href="/song/{uuid}"`形式のリンクを探す
+            // 新しいアプローチ: より確実なセレクタを使用
             const linkSelectors = [
               `a[href="/song/${uuid}"]`, // 完全一致（相対パス）
               `a[href*="/song/${uuid}"]`, // 部分一致（相対パス）
+              `a.hover\\:underline[href*="${uuid}"]`, // hover:underlineクラス付き
               `a[href*="${uuid}"]`, // UUIDを含む
               `[href*="/song/${uuid}"]` // その他の要素
             ];
-            
+
             let link = null;
             for (const selector of linkSelectors) {
               try {
@@ -300,7 +301,7 @@
                 // セレクタエラーは無視
               }
             }
-            
+
             // リンクが見つからない場合、すべてのa要素を走査
             if (!link) {
               try {
@@ -322,12 +323,24 @@
         if (link) {
           // タイトルをリンクのテキストから取得
           title = link.textContent.trim() || link.getAttribute('title') || link.getAttribute('aria-label') || '';
-          
+
           // リンク要素の親要素（clip-rowなど）を探す
           const parent = link.closest('[data-testid="clip-row"], [class*="clip-row"], [class*="song"], [class*="card"], [class*="item"], [role="row"]');
-          
+
           if (parent) {
-            // タイトルが空の場合、リンクの周辺からタイトルを探す
+            // タイトルが空の場合、特定のクラスを持つdiv要素から取得
+            if (!title) {
+              // css-nh27or または emi8w7v13 クラスを持つdiv内のリンクを探す
+              const titleDiv = parent.querySelector('.css-nh27or, [class*="emi8w7v13"]');
+              if (titleDiv) {
+                const titleLink = titleDiv.querySelector('a');
+                if (titleLink) {
+                  title = titleLink.textContent.trim();
+                }
+              }
+            }
+
+            // まだタイトルが空の場合、リンクの周辺からタイトルを探す
             if (!title) {
               // リンクの親要素からタイトルを探す
               const linkParent = link.parentElement;
@@ -348,104 +361,110 @@
             }
             
             // プロンプトを取得（SunoAIの構造に合わせたセレクタ）
-            // HTML構造から、`css-ingj1g emi8w7v14`クラスを持つdiv要素がプロンプト
-            // まず、親要素内のすべてのdiv要素を走査して、プロンプトらしいテキストを含むものを探す
-            const allDivs = parent.querySelectorAll('div');
-            let promptDivsFound = 0;
-            
-            // デバッグ情報を初期化（最初の3件のみ）
-            if (index < 3) {
-              if (!window._sunoDebugInfo) {
-                window._sunoDebugInfo = [];
-              }
-              window._sunoDebugInfo[index] = { 
-                url: url, 
-                index: index, 
-                parentFound: !!parent, 
-                allDivsCount: allDivs.length, 
-                promptCandidates: [],
-                hasLink: !!link,
-                title: title || ''
-              };
-            }
-            
-            for (const div of allDivs) {
-              // クラス名をチェック（ingj1gまたはemi8w7v14を含む）
-              const classList = div.className || '';
-              const hasIngj1g = classList.includes('ingj1g');
-              const hasEmi8w7v14 = classList.includes('emi8w7v14');
-              const hasPromptClass = (hasIngj1g || hasEmi8w7v14) &&
-                                    !div.contains(link) &&
-                                    !div.querySelector('button') &&
-                                    !div.querySelector('svg') &&
-                                    !div.querySelector('a[href*="/song/"]');
-              
-              if (hasPromptClass) {
-                promptDivsFound++;
-                const promptText = div.textContent.trim();
-                // デバッグ情報を収集（最初の3件のみ）
-                if (index < 3 && promptText && window._sunoDebugInfo && window._sunoDebugInfo[index]) {
-                  window._sunoDebugInfo[index].promptCandidates.push({
-                    hasIngj1g: hasIngj1g,
-                    hasEmi8w7v14: hasEmi8w7v14,
-                    className: classList,
-                    textLength: promptText.length,
-                    textPreview: promptText.substring(0, 100)
-                  });
-                }
-                // プロンプトらしいテキストかチェック
-                if (promptText && 
-                    promptText.length > 20 && 
-                    !promptText.match(/^v\d+$/) && 
-                    !promptText.startsWith('http') &&
-                    promptText !== '(no styles)' &&
-                    !promptText.match(/^Uploaded$/)) {
-                  prompt = promptText;
-                  break;
-                }
-              }
-            }
-            
-            // デバッグ情報を更新
-            if (index < 3 && window._sunoDebugInfo && window._sunoDebugInfo[index]) {
-              window._sunoDebugInfo[index].promptDivsFound = promptDivsFound;
-              window._sunoDebugInfo[index].promptFound = !!prompt;
-            }
-            
-            // プロンプトが見つからない場合、特定のセレクタを試す
-            if (!prompt) {
-              const promptSelectors = [
-                'div[class*="ingj1g"][class*="emi8w7v14"]', // 両方のクラスを含む
-                'div[class*="ingj1g"]', // ingj1gを含むクラス
-                'div[class*="emi8w7v14"]', // emi8w7v14を含むクラス
-                '[data-testid="style-prompt"]',
-                '.style-prompt',
-                '[class*="prompt"]'
-              ];
-              
-              for (const selector of promptSelectors) {
-                try {
-                  const promptElement = parent.querySelector(selector);
-                  if (promptElement && promptElement.textContent.trim()) {
+            // 優先順位1: 特定のクラスを持つdiv要素を直接検索
+            const promptSelectors = [
+              '.css-ingj1g.emi8w7v14', // 両方のクラスを持つ要素
+              '.css-ingj1g', // css-ingj1gクラスを持つ要素
+              '[class*="ingj1g"][class*="emi8w7v14"]', // 両方を含むクラス
+              '[class*="ingj1g"]', // ingj1gを含むクラス
+              '[class*="emi8w7v14"]' // emi8w7v14を含むクラス
+            ];
+
+            for (const selector of promptSelectors) {
+              try {
+                const promptElements = parent.querySelectorAll(selector);
+                for (const promptElement of promptElements) {
+                  // ボタンやリンクを含まない要素のみを対象
+                  if (!promptElement.querySelector('button') &&
+                      !promptElement.querySelector('a[href*="/song/"]') &&
+                      !promptElement.contains(link)) {
                     const promptText = promptElement.textContent.trim();
                     // プロンプトらしいテキストかチェック
-                    if (promptText.length > 20 && 
-                        !promptText.match(/^v\d+$/) && 
+                    if (promptText &&
+                        promptText.length > 20 &&
+                        !promptText.match(/^v\d+$/) &&
                         !promptText.startsWith('http') &&
                         promptText !== '(no styles)' &&
-                        !promptElement.contains(link)) {
+                        !promptText.match(/^Uploaded$/) &&
+                        !promptText.match(/^Publish$/)) {
                       prompt = promptText;
                       break;
                     }
                   }
-                } catch (e) {
-                  // セレクタエラーは無視
                 }
+                if (prompt) break;
+              } catch (e) {
+                // セレクタエラーは無視
               }
             }
-            
-            // まだプロンプトが見つからない場合、親要素内のすべてのdiv要素を走査
-            if (!prompt && parent) {
+
+            // 優先順位2: プロンプトが見つからない場合、より汎用的な検索
+            const allDivs = parent.querySelectorAll('div');
+            if (!prompt && allDivs.length > 0) {
+              let promptDivsFound = 0;
+
+              // デバッグ情報を初期化（最初の3件のみ）
+              if (index < 3) {
+                if (!window._sunoDebugInfo) {
+                  window._sunoDebugInfo = [];
+                }
+                window._sunoDebugInfo[index] = {
+                  url: url,
+                  index: index,
+                  parentFound: !!parent,
+                  allDivsCount: allDivs.length,
+                  promptCandidates: [],
+                  hasLink: !!link,
+                  title: title || ''
+                };
+              }
+
+              for (const div of allDivs) {
+                // クラス名をチェック（ingj1gまたはemi8w7v14を含む）
+                const classList = div.className || '';
+                const hasIngj1g = classList.includes('ingj1g');
+                const hasEmi8w7v14 = classList.includes('emi8w7v14');
+                const hasPromptClass = (hasIngj1g || hasEmi8w7v14) &&
+                  !div.contains(link) &&
+                  !div.querySelector('button') &&
+                  !div.querySelector('svg') &&
+                  !div.querySelector('a[href*="/song/"]');
+
+                if (hasPromptClass) {
+                  promptDivsFound++;
+                  const promptText = div.textContent.trim();
+                  // デバッグ情報を収集（最初の3件のみ）
+                  if (index < 3 && promptText && window._sunoDebugInfo && window._sunoDebugInfo[index]) {
+                    window._sunoDebugInfo[index].promptCandidates.push({
+                      hasIngj1g: hasIngj1g,
+                      hasEmi8w7v14: hasEmi8w7v14,
+                      className: classList,
+                      textLength: promptText.length,
+                      textPreview: promptText.substring(0, 100)
+                    });
+                  }
+                  // プロンプトらしいテキストかチェック
+                  if (promptText &&
+                    promptText.length > 20 &&
+                    !promptText.match(/^v\d+$/) &&
+                    !promptText.startsWith('http') &&
+                    promptText !== '(no styles)' &&
+                    !promptText.match(/^Uploaded$/)) {
+                    prompt = promptText;
+                    break;
+                  }
+                }
+              }
+
+              // デバッグ情報を更新
+              if (index < 3 && window._sunoDebugInfo && window._sunoDebugInfo[index]) {
+                window._sunoDebugInfo[index].promptDivsFound = promptDivsFound;
+                window._sunoDebugInfo[index].promptFound = !!prompt;
+              }
+            }
+
+            // 優先順位3: まだプロンプトが見つからない場合、より広範囲に検索
+            if (!prompt && parent && allDivs.length > 0) {
               for (const div of allDivs) {
                 const text = div.textContent.trim();
                 // プロンプトらしいテキストかチェック
