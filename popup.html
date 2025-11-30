@@ -13,25 +13,17 @@
     </header>
 
     <div class="tabs">
-      <button class="tab-button active" data-tab="songs">保存済み楽曲</button>
-      <button class="tab-button" data-tab="urls">URL一覧</button>
+      <button class="tab-button active" data-tab="urls">URL一覧</button>
       <button class="tab-button" data-tab="actions">アクション</button>
+      <button class="tab-button" data-tab="debug">デバッグ情報</button>
     </div>
 
-    <div class="tab-content active" id="songs-tab">
+    <div class="tab-content active" id="urls-tab">
       <div class="actions-bar">
-        <button id="save-current-page" class="btn btn-primary">現在のページを保存</button>
-        <button id="refresh-songs" class="btn btn-secondary">更新</button>
-      </div>
-      <div id="songs-list" class="songs-list">
-        <p class="loading">読み込み中...</p>
-      </div>
-    </div>
-
-    <div class="tab-content" id="urls-tab">
-      <div class="actions-bar">
-        <button id="get-all-urls" class="btn btn-primary">URLを取得</button>
+        <button id="get-all-urls" class="btn btn-primary">全URLを取得</button>
+        <button id="copy-all-urls" class="btn btn-primary">クリップボードにコピー</button>
         <button id="export-urls" class="btn btn-secondary">エクスポート</button>
+        <button id="clear-urls" class="btn btn-danger">クリア</button>
       </div>
       <div id="urls-list" class="urls-list">
         <p class="loading">読み込み中...</p>
@@ -45,10 +37,81 @@
         <div class="info-section">
           <h3>使い方</h3>
           <ul>
-            <li>SunoAIのページで右クリック → 「楽曲情報を保存」で現在のページの情報を保存</li>
-            <li>右クリック → 「ワークスペース内の全URLを取得」でページ内のURLを収集</li>
-            <li>このポップアップからも現在のページを保存できます</li>
+            <li>SunoAIのページで右クリック → 「ワークスペース内の全URLを取得」でページ内のURLを収集</li>
+            <li>URL一覧タブで、取得したURLをコピー・削除・エクスポートできます</li>
           </ul>
+        </div>
+      </div>
+    </div>
+
+    <div class="tab-content" id="debug-tab">
+      <div class="debug-panel">
+        <div class="debug-header">
+          <h3>デバッグ情報</h3>
+          <div class="debug-actions">
+            <button id="copy-debug" class="btn btn-small btn-primary">コピー</button>
+            <button id="clear-debug" class="btn btn-small btn-danger">クリア</button>
+          </div>
+        </div>
+        <div id="debug-log" class="debug-log">
+          <p class="empty">デバッグ情報がありません</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 詳細モーダル -->
+  <div id="detail-modal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>詳細情報</h2>
+        <button class="modal-close" id="close-modal">&times;</button>
+      </div>
+      <div class="modal-body" id="detail-content">
+        <!-- 詳細情報がここに表示されます -->
+      </div>
+    </div>
+  </div>
+
+  <!-- コピー選択モーダル -->
+  <div id="copy-modal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>コピーする情報を選択</h2>
+        <button class="modal-close" id="close-copy-modal">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="checkbox-group">
+          <label><input type="checkbox" id="copy-url" checked> URL</label>
+          <label><input type="checkbox" id="copy-title" checked> タイトル</label>
+          <label><input type="checkbox" id="copy-prompt" checked> プロンプト</label>
+          <label><input type="checkbox" id="copy-image"> 画像URL</label>
+        </div>
+        <div class="modal-actions">
+          <button id="confirm-copy" class="btn btn-primary">コピー</button>
+          <button id="cancel-copy" class="btn btn-secondary">キャンセル</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- エクスポート選択モーダル -->
+  <div id="export-modal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>エクスポートする情報を選択</h2>
+        <button class="modal-close" id="close-export-modal">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="checkbox-group">
+          <label><input type="checkbox" id="export-url" checked> URL</label>
+          <label><input type="checkbox" id="export-title" checked> タイトル</label>
+          <label><input type="checkbox" id="export-prompt" checked> プロンプト</label>
+          <label><input type="checkbox" id="export-image"> 画像URL</label>
+        </div>
+        <div class="modal-actions">
+          <button id="confirm-export" class="btn btn-primary">エクスポート</button>
+          <button id="cancel-export" class="btn btn-secondary">キャンセル</button>
         </div>
       </div>
     </div>
